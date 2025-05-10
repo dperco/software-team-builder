@@ -1,0 +1,37 @@
+# requirements.txt (Propuesta Revisada)
+
+# Core de la API Web
+fastapi>=0.95.0
+uvicorn[standard]>=0.15.0
+pydantic[email]>=1.10.2 
+python-multipart>=0.0.5 
+
+# Base de Datos
+mysql-connector-python>=8.0.30
+
+# Autenticación y Seguridad
+passlib[bcrypt]>=1.7.4
+
+# Variables de Entorno
+python-dotenv>=0.20.0 
+
+# IA y Procesamiento de Lenguaje
+# --- Langchain (versiones más recientes, deja que pip resuelva sub-dependencias) ---
+langchain>=0.1.0 
+langchain-openai>=0.0.7 
+# NOTA: Quitar 'langchain==0.0.340'. Si tu código DEPENDE MUCHO de esa versión
+# específica, podrías tener que ajustar el código. Pero es la causa más probable del conflicto.
+
+# --- Otros de IA ---
+openai>=0.27.0 
+spacy>=3.5.0
+sentence-transformers>=2.2.2 
+faiss-cpu>=1.7.4
+
+# Data Handling
+pandas>=1.5.3 
+numpy>=1.21.0
+scikit-learn>=1.0.0 
+
+# Asegúrate de que no haya otras dependencias ocultas en tu código
+# que no estén listadas aquí.

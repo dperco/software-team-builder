@@ -1,0 +1,335 @@
+/* Estilos Generales (ya los tenías) */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f8f9fc; /* Ligeramente diferente */
+  color: #5a5c69; /* Gris oscuro */
+}
+
+.app-container {
+  max-inline-size: 1000px; /* Un poco más ancho */
+  margin: 20px auto; /* Añadido margen superior/inferior */
+  padding: 30px; /* Más padding interno */
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15); /* Sombra más sutil */
+}
+
+h1, h2, h3, h4 {
+  color: #4e73df; /* Azul primario */
+}
+
+h1 {
+  text-align: center;
+  margin-block-end: 10px;
+}
+
+p {
+    line-height: 1.6;
+    margin-block-end: 15px;
+}
+
+/* --- Formulario Mejorado --- */
+.team-builder-form {
+  margin-block-start: 30px;
+}
+
+.form-section {
+  margin-block-end: 35px;
+  padding-block-end: 25px;
+  border-block-end: 1px solid #e3e6f0; /* Separador */
+}
+
+.form-section:last-of-type {
+    border-block-end: none;
+}
+
+.form-section h2 {
+  font-size: 1.4em;
+  margin-block-end: 20px;
+  padding-block-end: 10px;
+  border-block-end: 1px solid #e3e6f0;
+  color: #5a5c69;
+}
+
+.form-group {
+  margin-block-end: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-block-end: 8px;
+  font-weight: 600;
+  font-size: 0.95em;
+  color: #5a5c69;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea {
+  inline-size: 100%;
+  padding: 12px 15px; /* Más padding */
+  border: 1px solid #d1d3e2; /* Borde gris claro */
+  border-radius: 0.35rem; /* Bordes redondeados */
+  font-size: 1rem;
+  color: #6e707e;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  box-sizing: border-box; /* Incluir padding en width */
+}
+
+.form-group input[type="number"] {
+    appearance: textfield; /* Ocultar flechas en algunos navegadores */
+    -moz-appearance: textfield;
+}
+
+.form-group textarea {
+    resize: vertical; /* Permitir redimensionar solo verticalmente */
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #4e73df;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+/* Estructura de roles */
+.role-structure {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Columnas responsivas */
+    gap: 15px;
+}
+
+.role-structure .form-group label {
+    font-size: 0.9em; /* Más pequeño */
+}
+
+
+/* --- Selección de tecnologías --- */
+.tech-selection h2 {
+    margin-block-end: 10px;
+}
+.tech-selection > p {
+    margin-block-end: 25px;
+    font-size: 0.95em;
+    color: #858796;
+}
+
+.tech-group {
+  margin-block-end: 25px;
+  padding: 20px;
+  background: #f8f9fc;
+  border: 1px solid #e3e6f0;
+  border-radius: 6px;
+}
+
+.tech-group h4 {
+  margin-block-start: 0;
+  margin-block-end: 15px;
+  font-size: 1.1em;
+  color: #5a5c69;
+}
+
+.tech-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px; /* Espacio vertical y horizontal */
+}
+
+.tech-group label {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: 0; /* Eliminado margen derecho, controlado por gap */
+  cursor: pointer;
+  padding: 5px 0;
+  font-size: 0.9em;
+}
+
+.tech-group input[type="checkbox"] {
+  margin-inline-end: 8px;
+  cursor: pointer;
+  /* Estilos personalizados para checkbox (opcional) */
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+/* --- Botón de Envío --- */
+.submit-section {
+    text-align: center;
+    margin-block-start: 30px;
+}
+
+button[type="submit"] {
+  background-color: #4e73df; /* Azul primario */
+  color: white;
+  border: none;
+  padding: 12px 30px; /* Más padding horizontal */
+  border-radius: 0.35rem;
+  font-size: 1.1em; /* Ligeramente más grande */
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button[type="submit"]:hover:not(:disabled) {
+  background-color: #2e59d9; /* Azul más oscuro */
+}
+
+button[type="submit"]:disabled {
+  background-color: #858796; /* Gris para deshabilitado */
+  cursor: not-allowed;
+}
+
+/* --- Sección de Resultados --- */
+.team-results {
+  margin-block-start: 40px;
+  padding-block-start: 30px;
+  border-block-start: 1px solid #e3e6f0;
+}
+.team-results h2 {
+    text-align: center;
+    margin-block-end: 30px;
+    color: #1cc88a; /* Verde éxito */
+}
+
+.result-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-block-end: 30px;
+}
+
+.card { /* Estilo base para tarjetas de info y miembros */
+  border: 1px solid #e3e6f0;
+  padding: 20px;
+  border-radius: 6px;
+  background: white;
+  box-shadow: 0 0.1rem 1rem 0 rgba(58, 59, 69, 0.1);
+}
+.card h3 {
+    margin-block-start: 0;
+    margin-block-end: 15px;
+    font-size: 1.2em;
+    color: #5a5c69;
+    border-block-end: 1px solid #f0f1f5;
+    padding-block-end: 10px;
+}
+.card p, .card li {
+    margin-block-end: 8px;
+    font-size: 0.95em;
+    color: #6e707e;
+}
+.card span, .card strong {
+    color: #4e73df; /* Resaltar valores */
+    font-weight: 600;
+}
+.card span.negative-budget {
+    color: #e74c3c; /* Rojo para presupuesto negativo */
+    font-weight: bold;
+}
+
+.structure-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.structure-info li {
+    margin-block-end: 5px;
+}
+
+/* Miembros del equipo */
+.team-members h3 {
+    text-align: center;
+    margin-block-end: 20px;
+    font-size: 1.3em;
+}
+
+.team-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Ajustar tamaño mínimo si es necesario */
+  gap: 20px;
+}
+
+.member-card h4 {
+  margin-block-start: 0;
+  margin-block-end: 15px;
+  color: #4e73df;
+  font-size: 1.15em;
+  border-block-end: 1px solid #f0f1f5;
+  padding-block-end: 8px;
+}
+.member-card .member-level {
+    font-size: 0.85em;
+    color: #858796;
+    font-weight: normal;
+}
+.member-card .member-role {
+    font-weight: bold;
+    background-color: #f0f1f5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.member-card p strong {
+    color: #5a5c69; /* Color normal para etiquetas */
+    font-weight: 600;
+    margin-inline-end: 5px;
+}
+.member-card .member-salary {
+    font-weight: bold;
+    color: #1cc88a; /* Verde para salario */
+}
+
+
+/* Mensajes de error */
+.error-message {
+  color: #721c24; /* Texto oscuro */
+  background-color: #f8d7da; /* Fondo rosa claro */
+  padding: 15px 20px;
+  border-radius: 4px;
+  margin: 20px 0; /* Espacio arriba y abajo */
+  border: 1px solid #f5c6cb; /* Borde rosa */
+  font-weight: 500;
+}
+
+/* --- Responsividad (Ejemplo básico) --- */
+@media (max-width: 768px) {
+  .result-summary {
+    grid-template-columns: 1fr; /* Una columna en móviles */
+  }
+  .team-members {
+    grid-template-columns: 1fr; /* Una columna para tarjetas de miembro */
+  }
+}
+
+/* En App.css o tu archivo CSS principal */
+.App-header {
+  /* ... tus estilos existentes ... */
+  display: flex; /* Para alinear el título y la info de usuario */
+  justify-content: space-between; /* Espacio entre título y user-info */
+  align-items: center; /* Centrar verticalmente */
+  padding: 1rem 2rem; /* Añadir padding */
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* Espacio entre el nombre y el botón */
+}
+
+.logout-button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+  background-color: #dc3545; /* Rojo */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.logout-button:hover {
+  background-color: #c82333;
+}
