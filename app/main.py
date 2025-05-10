@@ -13,6 +13,15 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
 
+from fastapi import FastAPI
+
+app = FastAPI()
+
+# Endpoint para el health check de Render
+@app.get("/healthz")  # <- Ruta absoluta (importante que comience con /)
+def health_check():
+    return {"status": "ok"}
+
 # --- Añadir la raíz del proyecto a sys.path para importar Config ---
 PROJECT_ROOT_FOR_CONFIG_IMPORT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if PROJECT_ROOT_FOR_CONFIG_IMPORT not in sys.path:
