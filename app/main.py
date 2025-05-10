@@ -17,10 +17,7 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-# Endpoint para el health check de Render
-@app.get("/healthz")  # <- Ruta absoluta (importante que comience con /)
-def health_check():
-    return {"status": "ok"}
+
 
 # --- Añadir la raíz del proyecto a sys.path para importar Config ---
 PROJECT_ROOT_FOR_CONFIG_IMPORT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -125,6 +122,11 @@ app = FastAPI(
 # Registrar los eventos directamente usando el nombre de la función (corutina)
 app.add_event_handler("startup", startup_event_handler) # <--- CORRECTO
 app.add_event_handler("shutdown", shutdown_event_handler) # <--- CORRECTO
+
+# Endpoint para el health check de Render
+@app.get("/healthz")  # <- Ruta absoluta (importante que comience con /)
+def health_check():
+    return {"status": "ok"}
 
 logger.info(f"FastAPI application '{Config.API_TITLE}' v{Config.API_VERSION} created and event handlers registered.")
 
