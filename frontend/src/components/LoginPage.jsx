@@ -15,7 +15,7 @@ function LoginPage({ onLoginSuccess, onSwitchToRegister }) {
 
     try {
       // URL del endpoint de login (incluye /api)
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('https://software-team-builder.onrender.com/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

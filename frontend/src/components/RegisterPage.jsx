@@ -34,7 +34,7 @@ function RegisterPage({ onSwitchToLogin, onRegisterSuccess }) {
 
     try {
        // URL del endpoint de registro (incluye /api)
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('https://software-team-builder.onrender.com/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
