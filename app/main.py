@@ -1,5 +1,4 @@
-# software-team-builder# software-team-builder/app/main.py
-
+# /app/main.py
 import os
 import sys
 import logging
@@ -8,16 +7,6 @@ from typing import Optional
 import pandas as pd
 from fastapi import FastAPI, Depends, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
-from fastapi import FastAPI
-
-app = FastAPI()
-
-
 
 # --- Añadir la raíz del proyecto a sys.path para importar Config ---
 PROJECT_ROOT_FOR_CONFIG_IMPORT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -31,7 +20,7 @@ try:
     # from .services.history_manager import FileHistoryManager # Ejemplo si lo tuvieras
     from .routers import teams as teams_router_module # Desde app/routers/teams.py
     from .auth.router import router as auth_router_obj # Desde app/auth/router.py
-    # No importamos get_recommendation_engine desde aquí para evitar ciclos.
+    from .dependencies import get_recommendation_engine # Importante para tus routers
 except ImportError as e:
     print(f"ERROR CRÍTICO AL IMPORTAR MÓDULOS EN MAIN.PY: {e}")
     print(f"  PROJECT_ROOT_FOR_CONFIG_IMPORT: {PROJECT_ROOT_FOR_CONFIG_IMPORT}")
@@ -49,32 +38,19 @@ logger = logging.getLogger(__name__) # Logger para este módulo
 PROJECT_ROOT_PATH = PROJECT_ROOT_FOR_CONFIG_IMPORT
 
 # --- Evento de Inicio de FastAPI (Startup) ---
-# Definido como corutina (async def)
 async def startup_event_handler():
-    """Inicializa servicios y los guarda en app.state al iniciar FastAPI."""
     logger.info("FastAPI startup event: Initializing services and storing in app.state...")
-
     data_file_path = os.path.join(PROJECT_ROOT_PATH, Config.DATA_SUBDIR, Config.EMPLOYEE_DATA_FILE_NAME)
-    # history_file_path = os.path.join(PROJECT_ROOT_PATH, Config.DATA_SUBDIR, Config.HISTORY_FILE_NAME)
-
     local_engine_instance: Optional[SoftwareTeamRecommender] = None
-    # local_history_manager: Optional[FileHistoryManager] = None
-
     try:
         logger.info(f"Loading employee data from: {data_file_path}")
         df_employees = pd.read_csv(data_file_path, delimiter=';')
-
         if df_employees.empty:
             logger.error(f"Employee data file {data_file_path} is empty. Recommendation engine will not be initialized.")
         else:
             logger.info(f"Successfully loaded {len(df_employees)} rows from {Config.EMPLOYEE_DATA_FILE_NAME}.")
-            local_engine_instance = SoftwareTeamRecommender(df_employees)
+            local_engine_instance = SoftwareTeamRecommender(df_employees) # Asumiendo que df_employees es el único argumento necesario
             logger.info("SoftwareTeamRecommender initialized.")
-
-        # Inicializar HistoryManager si se usa
-        # local_history_manager = FileHistoryManager(history_file_path)
-        # logger.info("FileHistoryManager initialized (if used).")
-
     except FileNotFoundError:
         logger.error(f"CRITICAL: Data file not found at {data_file_path}. Recommendation engine will be unavailable.")
     except pd.errors.EmptyDataError:
@@ -82,49 +58,34 @@ async def startup_event_handler():
     except Exception as e:
         logger.exception(f"CRITICAL ERROR during service initialization in startup_event: {e}")
     finally:
-        # --- Almacena en app.state ---
-        # Accedemos a la instancia 'app' definida más abajo en este módulo
-        # Esto es seguro porque el event handler se registra después de crear 'app'
         app.state.recommendation_engine = local_engine_instance
-        # app.state.history_manager = local_history_manager # Si usas historial
-
         if local_engine_instance:
             logger.info("Recommendation engine instance stored in app.state.")
         else:
-            logger.warning("Recommendation engine instance is None (due to error or empty data); stored None in app.state.")
-
+            logger.warning("Recommendation engine instance is None; stored None in app.state.")
     logger.info("FastAPI startup event completed.")
 
 async def shutdown_event_handler():
-    """Limpia recursos al cerrar FastAPI."""
     logger.info("FastAPI shutdown event: Cleaning up resources...")
-    # Limpiar explícitamente app.state puede ser útil
     if hasattr(app.state, 'recommendation_engine'):
         logger.debug("Clearing recommendation_engine from app.state")
         app.state.recommendation_engine = None
-    # if hasattr(app.state, 'history_manager'):
-    #     logger.debug("Clearing history_manager from app.state")
-    #     app.state.history_manager = None
     logger.info("FastAPI shutdown event completed.")
 
-
 # --- Crear la Instancia Principal de FastAPI ---
-# Definir 'app' ANTES de registrar los event handlers que puedan necesitarla
 app = FastAPI(
     title=Config.API_TITLE,
     version=Config.API_VERSION,
     description=Config.API_DESCRIPTION,
     docs_url=Config.API_DOCS_URL,
     redoc_url=Config.API_REDOC_URL
-    # Los eventos on_startup/on_shutdown se añaden DESPUÉS usando app.add_event_handler
 )
 
-# Registrar los eventos directamente usando el nombre de la función (corutina)
-app.add_event_handler("startup", startup_event_handler) # <--- CORRECTO
-app.add_event_handler("shutdown", shutdown_event_handler) # <--- CORRECTO
+app.add_event_handler("startup", startup_event_handler)
+app.add_event_handler("shutdown", shutdown_event_handler)
 
 # Endpoint para el health check de Render
-@app.get("/healthz")  # <- Ruta absoluta (importante que comience con /)
+@app.get("/healthz")
 def health_check():
     return {"status": "ok"}
 
@@ -132,37 +93,52 @@ logger.info(f"FastAPI application '{Config.API_TITLE}' v{Config.API_VERSION} cre
 
 
 # --- Configuración de CORS ---
-ALLOWED_ORIGINS_STR = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174")
-origins = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(',') if origin.strip()]
-if not origins:
-    origins = ["http://localhost:5173"] # Fallback mínimo
-    logger.warning(f"ALLOWED_ORIGINS environment variable not set or empty, using default: {origins}")
+# Define los orígenes permitidos directamente o desde variables de entorno
+# Asegúrate de que tu URL de frontend de Render esté aquí.
+FRONTEND_URL_RENDER = "https://team-builder-front.onrender.com"
+
+# Lee orígenes adicionales de una variable de entorno si existe
+ADDITIONAL_ALLOWED_ORIGINS_STR = os.getenv("ALLOWED_ORIGINS", "")
+additional_origins_list = [origin.strip() for origin in ADDITIONAL_ALLOWED_ORIGINS_STR.split(',') if origin.strip()]
+
+# Combina la URL de Render con los orígenes adicionales (evitando duplicados)
+origins = list(set([FRONTEND_URL_RENDER] + additional_origins_list + [
+    "http://localhost:5173", # Para desarrollo local frontend Vite (común)
+    "http://127.0.0.1:5173", # Alternativa para localhost
+    # "http://localhost:PUERTO_VITE_SI_ES_DIFERENTE", # Añade otros si los usas
+]))
+
+if not origins: # Fallback muy básico si todo falla (no debería ocurrir con FRONTEND_URL_RENDER)
+    origins = [FRONTEND_URL_RENDER]
+    logger.warning(f"No valid origins configured, using default: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, OPTIONS, etc.
-    allow_headers=["*"], # Permite todas las cabeceras estándar y personalizadas.
+    allow_credentials=True, # Importante para cookies o Authorization headers
+    allow_methods=["*"],    # Permite todos los métodos: GET, POST, OPTIONS, PUT, DELETE, etc.
+    allow_headers=["*"],    # Permite todas las cabeceras.
 )
 logger.info(f"CORSMiddleware added. Allowed origins: {origins}")
+# --- FIN DE CONFIGURACIÓN DE CORS ---
 
 
 # --- Incluir (Montar) los Routers en la Aplicación Principal ---
 try:
-    # El router de `teams_router_module` (ej. app/routers/teams.py) debe llamarse `router`
+    # teams_router_module es el módulo importado (app/routers/teams.py)
+    # Asumimos que dentro de ese módulo hay un objeto APIRouter llamado 'router'
     app.include_router(teams_router_module.router, prefix="/api", tags=["Teams Management"])
-    # `auth_router_obj` ya es el objeto router importado desde app/auth/router.py
+
+    # auth_router_obj ya es la instancia del router importada (desde app/auth/router.py)
     app.include_router(auth_router_obj, prefix="/api/auth", tags=["Authentication"])
 
-    # Si tienes un router para el chat en app/routers/chat.py que exporta un 'router':
+    # Ejemplo si tuvieras un router de chat:
     # from .routers import chat as chat_router_module
     # app.include_router(chat_router_module.router, prefix="/api/chat", tags=["AI Assistant Chat"])
 
     logger.info("Routers included successfully.")
 except AttributeError as e:
-    # Este error ocurre si, por ejemplo, teams_router_module no tiene un atributo 'router'
-    logger.exception(f"ERROR CRÍTICO AL INCLUIR ROUTERS: Un módulo de router no tiene un atributo 'router'. Error: {e}")
+    logger.exception(f"ERROR CRÍTICO AL INCLUIR ROUTERS: Un módulo de router no tiene un atributo 'router' o el objeto router importado es incorrecto. Error: {e}")
     sys.exit("Error crítico: Fallo al incluir routers.")
 except Exception as e:
     logger.exception(f"ERROR INESPERADO AL INCLUIR ROUTERS: {e}")
@@ -171,17 +147,11 @@ except Exception as e:
 
 # --- Endpoint Raíz (Opcional) ---
 @app.get("/", tags=["Root"], summary="API Status Endpoint")
-async def read_root(request: Request): # Necesita `Request` para acceder a `request.app.state`
-    """
-    Endpoint raíz. Devuelve un mensaje de bienvenida y el estado de la API,
-    incluyendo el estado del motor de recomendación.
-    """
+async def read_root(request: Request):
     logger.debug("GET / root endpoint accessed")
-    # Verificar de forma segura si recommendation_engine existe y no es None en app.state
     engine_status = "Not Initialized (app.state missing engine attribute)"
     if hasattr(request.app.state, 'recommendation_engine'):
         engine_status = "Operational" if request.app.state.recommendation_engine else "Not Initialized (app.state engine is None)"
-
     return {
         "message": f"Welcome to {Config.API_TITLE} v{Config.API_VERSION}",
         "status": "API is running",
@@ -190,15 +160,20 @@ async def read_root(request: Request): # Necesita `Request` para acceder a `requ
 
 logger.info(f"FastAPI application setup complete. Target host: {Config.SERVER_HOST}, port: {Config.SERVER_PORT} (when run with uvicorn).")
 
-# --- Punto de entrada para ejecución directa (SOLO para desarrollo local) ---
-# (Generalmente no se incluye aquí, se usa el comando uvicorn directamente)
+# El bloque if __name__ == "__main__": que tenías al inicio
+# para uvicorn.run(app, ...) no es necesario aquí si Render invoca
+# uvicorn con el comando de inicio (ej. uvicorn app.main:app --host 0.0.0.0 --port $PORT)
+# Si lo mantienes, asegúrate de que la instancia `app` esté definida ANTES de que se llame.
+# Lo he movido conceptualmente al final y comentado porque Render se encarga de esto.
+
 # if __name__ == "__main__":
 #     import uvicorn
+#     # Asegúrate que app esté completamente configurada ANTES de esta línea
 #     logger.info(f"Starting Uvicorn server directly for development at http://{Config.SERVER_HOST}:{Config.SERVER_PORT}")
 #     uvicorn.run(
-#         "app.main:app", # Ruta al objeto app de FastAPI
+#         "app.main:app",
 #         host=Config.SERVER_HOST,
 #         port=Config.SERVER_PORT,
 #         reload=True,
-#         reload_dirs=[os.path.join(PROJECT_ROOT_PATH, "app")] # Vigilar cambios en app/
+#         reload_dirs=[os.path.join(PROJECT_ROOT_PATH, "app")]
 #     )
