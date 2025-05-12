@@ -373,10 +373,7 @@ function App() {
     e.preventDefault();
     setLoading(true); setError(null); setTeamResult(null); setInferredTechsUI([]);
 
-    // --- ¡CORRECCIÓN AQUÍ! ---
-    // 1. Construir `team_structure` (sin tipo TypeScript)
     const team_structure = {};
-    // --- FIN CORRECCIÓN ---
     for (const role in formData.roles) {
       if (formData.roles[role] > 0) {
         team_structure[role] = formData.roles[role];
@@ -387,10 +384,7 @@ function App() {
          setLoading(false); return;
     }
 
-    // --- ¡CORRECCIÓN AQUÍ! ---
-    // 2. Construir `explicit_technologies_by_role` (sin tipo TypeScript)
     const explicit_technologies_by_role = {};
-    // --- FIN CORRECCIÓN ---
     for (const role in formData.techs) {
       if (team_structure[role] && formData.techs[role]?.length > 0) {
         explicit_technologies_by_role[role] = formData.techs[role];
@@ -411,7 +405,7 @@ function App() {
       const bodyString = JSON.stringify(requestBody);
       console.log("handleSubmit: JSON.stringify(requestBody) exitoso.");
 
-      const apiUrl = '/api/teams/generate'; // URL Relativa Correcta
+      const apiUrl = '/api/teams/generate'; // URL relativa, asume que el proxy de Vite o Nginx la maneja
       console.log(`handleSubmit: Fetching POST ${apiUrl}`);
 
       const response = await fetch(apiUrl, {
@@ -424,14 +418,25 @@ function App() {
       });
 
       console.log(`handleSubmit: Fetch respondió con status ${response.status}`);
-      const responseText = await response.text();
-      // console.log("handleSubmit: Texto de la respuesta:", responseText);
+
+      const responseText = await response.text(); // Obtener el texto CRUDO
+      console.log("handleSubmit: Texto CRUDO de la respuesta del servidor:", responseText); // Loguear el texto
 
       let responseData;
-      try { responseData = JSON.parse(responseText); }
-      catch (parseError) {
+      if (!responseText || responseText.trim() === "") {
+        if (response.ok) {
+            console.warn("handleSubmit: Respuesta OK (2xx) pero cuerpo vacío.");
+            throw new Error("El servidor devolvió una respuesta OK pero vacía, y se esperaba JSON.");
+        } else {
+            throw new Error(`Error del servidor: ${response.status} ${response.statusText} con cuerpo de respuesta vacío.`);
+        }
+      }
+
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
         console.error("handleSubmit: Error al parsear la respuesta JSON:", parseError);
-        throw new Error(`Respuesta inválida o no JSON del servidor: ${responseText.substring(0, 100) || response.statusText}`);
+        throw new Error(`Respuesta inválida o no JSON del servidor. Texto recibido (primeros 200 chars): '${responseText.substring(0, 200)}'`);
       }
 
       if (!response.ok) {
@@ -452,7 +457,7 @@ function App() {
       setLoading(false);
       console.log("handleSubmit: Proceso de fetch finalizado.");
     }
-  }; // Fin de handleSubmit
+  };
 
   // --- Renderizado ---
   if (!isAuthenticated) {
