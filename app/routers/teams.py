@@ -1,29 +1,27 @@
-## app/routers/teams.py
+# app/routers/teams.py
 
 from fastapi import APIRouter, HTTPException, Depends, Body, status, Request
-from pydantic import BaseModel, Field, validator # BaseModel ya está en FastAPI, no necesitas importarlo de pydantic directamente si usas FastAPI >= 0.100
+from pydantic import BaseModel, Field, validator # BaseModel ya está en FastAPI
 from typing import Optional, Dict, Any, List
 import logging
 
-# Importaciones relativas desde app/
+# Importaciones relativas desde app/ (SE MANTIENEN por si quieres volver a la original rápidamente)
 try:
-    from ..recommendation_engine import SoftwareTeamRecommender # Para el type hint
-    from ..dependencies import get_recommendation_engine # Importa la dependencia correcta
+    from ..recommendation_engine import SoftwareTeamRecommender
+    from ..dependencies import get_recommendation_engine
 except ImportError as e:
-    # Este print es para el inicio, el logger podría no estar configurado aún
     print(f"ERROR CRITICO [app/routers/teams.py]: No se pudieron importar dependencias o el motor: {e}")
-    # Una vez que el logger está configurado, también podría loguear, pero el print asegura visibilidad temprana.
-    # logger.critical(f"No se pudieron importar dependencias o el motor: {e}") # Descomentar si el logger ya está activo
-    raise # Levanta la excepción para detener la aplicación si es un error crítico de importación
+    raise
 
 logger = logging.getLogger(__name__) # Logger para este módulo
 
 router = APIRouter(
-    prefix="/teams", # Prefijo para todos los endpoints en este router (/api/teams/...)
-    tags=["Teams Management"] # Agrupación en la documentación OpenAPI/Swagger
+    prefix="/teams",
+    tags=["Teams Management"]
 )
 
-# --- Modelos Pydantic (LOS MISMOS QUE TENÍAS) ---
+# --- Modelos Pydantic (SE MANTIENEN INTACTOS POR AHORA) ---
+# Necesitas TeamGenerationRequest para que la firma del endpoint de prueba siga validando el cuerpo del request.
 class TeamGenerationRequest(BaseModel):
     project_description: str = Field(
         ...,
@@ -50,6 +48,8 @@ class TeamGenerationRequest(BaseModel):
             raise ValueError('Si se define team_structure, al menos un rol debe tener un conteo mayor a cero.')
         return structure_dict
 
+# Los otros modelos de respuesta (MemberResponse, BudgetResponse, MetricsResponse, TeamGenerationResponse)
+# no son estrictamente necesarios para ESTA PRUEBA del endpoint, pero no hace daño dejarlos.
 class MemberResponse(BaseModel):
     id: int
     nombre: str
@@ -88,7 +88,8 @@ class TeamGenerationResponse(BaseModel):
 # --- FIN Modelos Pydantic ---
 
 
-# --- Endpoint para Generar Equipo ---
+# --- TU FUNCIÓN ORIGINAL (Coméntala o reNómbrala temporalmente) ---
+"""
 @router.post(
     "/generate",
     response_model=TeamGenerationResponse,
@@ -99,12 +100,8 @@ async def generate_team_endpoint(
     request_data: TeamGenerationRequest,
     engine: SoftwareTeamRecommender = Depends(get_recommendation_engine)
 ):
-    logger.info("--- INICIO Endpoint /api/teams/generate ---")
+    logger.info("--- INICIO Endpoint /api/teams/generate (ORIGINAL) ---")
     logger.debug(f"Datos de solicitud recibidos: {request_data.model_dump_json(indent=2)}")
-
-    # La dependencia get_recommendation_engine ya maneja el caso donde engine es None
-    # (debería lanzar un HTTPException 503 si app.state.recommendation_engine es None).
-
     try:
         logger.info("Llamando a engine.recommend_team...")
         result_from_engine: Dict[str, Any] = engine.recommend_team(
@@ -113,55 +110,70 @@ async def generate_team_endpoint(
             budget=request_data.budget,
             explicit_technologies_by_role=request_data.explicit_technologies_by_role or {}
         )
-
-        # Logs detallados SOBRE el resultado ANTES de devolverlo
         logger.info(f"Resultado obtenido de engine.recommend_team. Tipo: {type(result_from_engine)}")
         if isinstance(result_from_engine, dict):
-            # Loguear solo un resumen para no inundar los logs si el diccionario es muy grande
             logger.debug(f"Claves principales en result_from_engine: {list(result_from_engine.keys())}")
             logger.debug(f"Número de miembros en 'equipo' (si existe): {len(result_from_engine.get('equipo', [])) if 'equipo' in result_from_engine else 'No presente'}")
-            logger.debug(f"Status message (si existe): {result_from_engine.get('status_message', 'No presente')}")
         else:
-            # Esto sería un problema, ya que esperamos un dict para el response_model
-            logger.error(f"¡ALERTA! engine.recommend_team NO devolvió un diccionario. Tipo: {type(result_from_engine)}. Contenido (primeros 500 chars): {str(result_from_engine)[:500]}")
-
-        # Verificaciones cruciales antes de devolver
+            logger.error(f"¡ALERTA! engine.recommend_team NO devolvió un diccionario. Tipo: {type(result_from_engine)}.")
         if result_from_engine is None:
-            logger.error("engine.recommend_team devolvió None. Esto no es un JSON válido y causará un error de parseo en el frontend si se devuelve un 200 OK con cuerpo vacío.")
+            logger.error("engine.recommend_team devolvió None.")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="El motor de recomendación devolvió un resultado nulo (None), lo cual es inesperado."
+                detail="El motor de recomendación devolvió un resultado nulo."
             )
         if not isinstance(result_from_engine, dict):
-            logger.error(f"engine.recommend_team devolvió un tipo inesperado: {type(result_from_engine)}. Se esperaba un dict para que Pydantic lo valide contra TeamGenerationResponse.")
+            logger.error(f"engine.recommend_team devolvió un tipo inesperado: {type(result_from_engine)}.")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"El motor de recomendación devolvió un tipo de dato inesperado: {type(result_from_engine)}."
             )
-
-        # Si llegamos aquí, result_from_engine es un diccionario.
-        # FastAPI/Pydantic intentará validarlo contra `TeamGenerationResponse`.
-        # Si la validación falla, se lanzará un error interno (generalmente un 500 con detalles de validación)
-        # que debería aparecer en los logs de Render si el nivel de log es adecuado (INFO o DEBUG).
-        logger.info("--- FIN Endpoint /api/teams/generate - Intentando devolver result_from_engine ---")
+        logger.info("--- FIN Endpoint /api/teams/generate (ORIGINAL) - Intentando devolver resultado ---")
         return result_from_engine
-
     except HTTPException as http_exc:
-        # Re-lanzar excepciones HTTP que ya fueron manejadas (ej., desde la dependencia o validadores Pydantic)
-        logger.error(f"HTTPException (ya manejada) capturada en /api/teams/generate: Status={http_exc.status_code}, Detail='{http_exc.detail}'")
-        raise http_exc # FastAPI la manejará
+        logger.error(f"HTTPException capturada en /api/teams/generate (ORIGINAL): Status={http_exc.status_code}, Detail='{http_exc.detail}'")
+        raise http_exc
     except ValueError as ve:
-        # Errores de valor, a menudo de validaciones Pydantic del request_data
-        # o errores lógicos dentro de recommend_team que lanzan ValueError
-        logger.warning(f"ValueError en la lógica de /api/teams/generate o validación de request: {ve}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, # Unprocessable Entity
-            detail=f"Error de validación o datos: {str(ve)}"
-        )
+        logger.warning(f"ValueError en /api/teams/generate (ORIGINAL): {ve}")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
     except Exception as e:
-        # Capturar cualquier otra excepción inesperada que no sea HTTPException o ValueError
-        logger.exception("Error GENÉRICO e INESPERADO en /api/teams/generate. Revisar traceback.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ocurrió un error interno crítico en el servidor al generar la recomendación."
-        )
+        logger.exception("Error GENÉRICO e inesperado en /api/teams/generate (ORIGINAL).")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno crítico.")
+"""
+
+# --- NUEVO ENDPOINT DE PRUEBA (SIMPLIFICADO) ---
+@router.post(
+    "/generate", # Mantenemos la misma ruta para que el frontend la llame
+    summary="[PRUEBA] Generar Equipo Técnico Recomendado (Simplificado)",
+    # Quitamos response_model y Depends temporalmente para aislar el problema
+)
+async def generate_team_endpoint_TEST(
+    request_data: TeamGenerationRequest # Mantenemos esto para que el cuerpo del request aún se valide
+):
+    logger.info("--- PRUEBA: Endpoint /api/teams/generate (SIMPLIFICADO) FUE LLAMADO ---")
+    logger.debug(f"--- PRUEBA: Datos de solicitud recibidos (SIMPLIFICADO): {request_data.model_dump_json(indent=2)}")
+
+    # Devolvemos un JSON simple y estático
+    test_json_response = {
+        "equipo": [], # Lista vacía para cumplir parcialmente con la estructura esperada por el frontend
+        "presupuesto": {
+            "total": request_data.budget, # Usamos algo del request para ver que llega
+            "utilizado": 0.0,
+            "restante": request_data.budget,
+            "porcentaje_utilizado": 0.0
+        },
+        "metricas": {
+            "promedio_puntaje": 0.0,
+            "tecnologias_faltantes": ["prueba_tech1", "prueba_tech2"],
+            "roles_cubiertos": {},
+            "roles_solicitados": request_data.team_structure
+        },
+        "analisis_equipo": "Respuesta de PRUEBA del endpoint simplificado.",
+        "status_message": "Endpoint de prueba alcanzado exitosamente.",
+        "inferred_project_technologies": ["prueba_inferida1"]
+    }
+    
+    logger.info(f"--- PRUEBA: Devolviendo respuesta JSON de prueba (SIMPLIFICADO): {test_json_response} ---")
+    return test_json_response
+
+# Aquí puedes añadir los otros endpoints (/history, /last-team) si los tienes.
