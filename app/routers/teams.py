@@ -1,27 +1,29 @@
 # app/routers/teams.py
 
+# app/routers/teams.py
+
 from fastapi import APIRouter, HTTPException, Depends, Body, status, Request
-from pydantic import BaseModel, Field, validator # BaseModel ya está en FastAPI
+from pydantic import BaseModel, Field, validator
 from typing import Optional, Dict, Any, List
 import logging
 
-# Importaciones relativas desde app/ (SE MANTIENEN por si quieres volver a la original rápidamente)
+# Importaciones relativas desde app/ (SE MANTIENEN)
 try:
     from ..recommendation_engine import SoftwareTeamRecommender
     from ..dependencies import get_recommendation_engine
 except ImportError as e:
     print(f"ERROR CRITICO [app/routers/teams.py]: No se pudieron importar dependencias o el motor: {e}")
+    # logger no estará disponible aquí si logging no se ha configurado en main aun
     raise
 
-logger = logging.getLogger(__name__) # Logger para este módulo
+logger = logging.getLogger(__name__) # Logger para este módulo ('app.routers.teams')
 
 router = APIRouter(
-    prefix="/teams",
+    prefix="/teams", # El prefijo del router es /teams. En main.py se monta bajo /api, entonces la ruta final es /api/teams
     tags=["Teams Management"]
 )
 
-# --- Modelos Pydantic (SE MANTIENEN INTACTOS POR AHORA) ---
-# Necesitas TeamGenerationRequest para que la firma del endpoint de prueba siga validando el cuerpo del request.
+# --- Modelos Pydantic (SE MANTIENEN) ---
 class TeamGenerationRequest(BaseModel):
     project_description: str = Field(
         ...,
@@ -48,9 +50,7 @@ class TeamGenerationRequest(BaseModel):
             raise ValueError('Si se define team_structure, al menos un rol debe tener un conteo mayor a cero.')
         return structure_dict
 
-# Los otros modelos de respuesta (MemberResponse, BudgetResponse, MetricsResponse, TeamGenerationResponse)
-# no son estrictamente necesarios para ESTA PRUEBA del endpoint, pero no hace daño dejarlos.
-class MemberResponse(BaseModel):
+class MemberResponse(BaseModel): # Y los otros modelos de respuesta
     id: int
     nombre: str
     email: Optional[str] = None
@@ -88,92 +88,67 @@ class TeamGenerationResponse(BaseModel):
 # --- FIN Modelos Pydantic ---
 
 
+# --- NUEVO ENDPOINT DE PRUEBA GET ---
+@router.get("/generate/ping", summary="[PRUEBA PING] Verifica si el router de teams responde")
+async def ping_teams_generate_route():
+    logger.info("--- PRUEBA PING GET: Endpoint /api/teams/generate/ping ALCANZADO ---")
+    return {"message": "Pong desde /api/teams/generate/ping! El router de teams está activo."}
+
+
 # --- TU FUNCIÓN ORIGINAL (Coméntala o reNómbrala temporalmente) ---
+# (Asegúrate de que la versión original de generate_team_endpoint esté comentada)
 """
 @router.post(
     "/generate",
     response_model=TeamGenerationResponse,
-    summary="Generar Equipo Técnico Recomendado",
-    description="Recibe detalles del proyecto, estructura, presupuesto y tecnologías; devuelve una recomendación de equipo."
+    # ... (resto de tu endpoint original)
 )
 async def generate_team_endpoint(
-    request_data: TeamGenerationRequest,
-    engine: SoftwareTeamRecommender = Depends(get_recommendation_engine)
+    # ... (argumentos)
 ):
-    logger.info("--- INICIO Endpoint /api/teams/generate (ORIGINAL) ---")
-    logger.debug(f"Datos de solicitud recibidos: {request_data.model_dump_json(indent=2)}")
-    try:
-        logger.info("Llamando a engine.recommend_team...")
-        result_from_engine: Dict[str, Any] = engine.recommend_team(
-            project_description=request_data.project_description,
-            team_structure=request_data.team_structure,
-            budget=request_data.budget,
-            explicit_technologies_by_role=request_data.explicit_technologies_by_role or {}
-        )
-        logger.info(f"Resultado obtenido de engine.recommend_team. Tipo: {type(result_from_engine)}")
-        if isinstance(result_from_engine, dict):
-            logger.debug(f"Claves principales en result_from_engine: {list(result_from_engine.keys())}")
-            logger.debug(f"Número de miembros en 'equipo' (si existe): {len(result_from_engine.get('equipo', [])) if 'equipo' in result_from_engine else 'No presente'}")
-        else:
-            logger.error(f"¡ALERTA! engine.recommend_team NO devolvió un diccionario. Tipo: {type(result_from_engine)}.")
-        if result_from_engine is None:
-            logger.error("engine.recommend_team devolvió None.")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="El motor de recomendación devolvió un resultado nulo."
-            )
-        if not isinstance(result_from_engine, dict):
-            logger.error(f"engine.recommend_team devolvió un tipo inesperado: {type(result_from_engine)}.")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"El motor de recomendación devolvió un tipo de dato inesperado: {type(result_from_engine)}."
-            )
-        logger.info("--- FIN Endpoint /api/teams/generate (ORIGINAL) - Intentando devolver resultado ---")
-        return result_from_engine
-    except HTTPException as http_exc:
-        logger.error(f"HTTPException capturada en /api/teams/generate (ORIGINAL): Status={http_exc.status_code}, Detail='{http_exc.detail}'")
-        raise http_exc
-    except ValueError as ve:
-        logger.warning(f"ValueError en /api/teams/generate (ORIGINAL): {ve}")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve))
-    except Exception as e:
-        logger.exception("Error GENÉRICO e inesperado en /api/teams/generate (ORIGINAL).")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno crítico.")
+    # ... (lógica original)
 """
 
-# --- NUEVO ENDPOINT DE PRUEBA (SIMPLIFICADO) ---
+# --- NUEVO ENDPOINT DE PRUEBA POST (SIMPLIFICADO) ---
 @router.post(
-    "/generate", # Mantenemos la misma ruta para que el frontend la llame
-    summary="[PRUEBA] Generar Equipo Técnico Recomendado (Simplificado)",
-    # Quitamos response_model y Depends temporalmente para aislar el problema
+    "/generate", # Mantenemos la misma ruta POST /api/teams/generate
+    summary="[PRUEBA POST] Endpoint /generate simplificado",
+    # No usamos response_model ni Depends(get_recommendation_engine) temporalmente
 )
 async def generate_team_endpoint_TEST(
-    request_data: TeamGenerationRequest # Mantenemos esto para que el cuerpo del request aún se valide
+    request_data: TeamGenerationRequest # Validamos el cuerpo del request con el modelo
 ):
-    logger.info("--- PRUEBA: Endpoint /api/teams/generate (SIMPLIFICADO) FUE LLAMADO ---")
-    logger.debug(f"--- PRUEBA: Datos de solicitud recibidos (SIMPLIFICADO): {request_data.model_dump_json(indent=2)}")
+    logger.info("--- PRUEBA POST: Endpoint /api/teams/generate (SIMPLIFICADO) FUE LLAMADO ---")
+    logger.debug(f"--- PRUEBA POST: Datos de solicitud recibidos (SIMPLIFICADO): {request_data.model_dump_json(indent=2)}")
 
-    # Devolvemos un JSON simple y estático
+    # Devolvemos un JSON simple y estático que se parezca un poco a la estructura esperada
     test_json_response = {
-        "equipo": [], # Lista vacía para cumplir parcialmente con la estructura esperada por el frontend
+        "equipo": [
+            # Puedes añadir un miembro de ejemplo si quieres probar el renderizado del frontend
+            # {
+            #     "id": 1, "nombre": "Tester McTest", "email": "tester@example.com",
+            #     "puesto_original": "Test Engineer", "rol_asignado": "qa", "rol_asignado_display": "QA",
+            #     "seniority_original": "Senior", "seniority_normalizado": "senior",
+            #     "anos_experiencia": 5, "proyectos_completados": 10, "salario": 50000, "score": 0.95,
+            #     "tecnologias_conocidas": ["Python", "Selenium"], "nivel_valor_original": 5
+            # }
+        ],
         "presupuesto": {
-            "total": request_data.budget, # Usamos algo del request para ver que llega
+            "total": float(request_data.budget), # Usar algo del request
             "utilizado": 0.0,
-            "restante": request_data.budget,
+            "restante": float(request_data.budget),
             "porcentaje_utilizado": 0.0
         },
         "metricas": {
             "promedio_puntaje": 0.0,
-            "tecnologias_faltantes": ["prueba_tech1", "prueba_tech2"],
-            "roles_cubiertos": {},
-            "roles_solicitados": request_data.team_structure
+            "tecnologias_faltantes": ["prueba_tech_faltante1"],
+            "roles_cubiertos": {}, # Puedes simular roles cubiertos
+            "roles_solicitados": request_data.team_structure # Usar algo del request
         },
-        "analisis_equipo": "Respuesta de PRUEBA del endpoint simplificado.",
-        "status_message": "Endpoint de prueba alcanzado exitosamente.",
-        "inferred_project_technologies": ["prueba_inferida1"]
+        "analisis_equipo": "Esta es una respuesta de PRUEBA del endpoint /api/teams/generate simplificado.",
+        "status_message": "Endpoint de prueba POST alcanzado exitosamente.",
+        "inferred_project_technologies": ["prueba_tech_inferida1", "prueba_tech_inferida2"]
     }
     
-    logger.info(f"--- PRUEBA: Devolviendo respuesta JSON de prueba (SIMPLIFICADO): {test_json_response} ---")
+    logger.info(f"--- PRUEBA POST: Devolviendo respuesta JSON de prueba (SIMPLIFICADO): {test_json_response} ---")
     return test_json_response
-
-# Aquí puedes añadir los otros endpoints (/history, /last-team) si los tienes.
